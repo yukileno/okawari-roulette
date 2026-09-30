@@ -68,12 +68,39 @@
     text-shadow:0 0 16px #ff2d95,0 0 30px #fff;opacity:0;pointer-events:none;z-index:9}
   #reach.on{animation:reach .35s steps(2) infinite;opacity:1}
   @keyframes reach{50%{color:#ffd84d;text-shadow:0 0 16px #ffd84d,0 0 30px #fff}}
+  #gear{position:fixed;top:12px;left:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;
+    padding:6px 12px;font-size:16px;cursor:pointer;z-index:12;font-family:inherit}
+  #settings{position:fixed;inset:0;background:rgba(5,0,15,.75);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+  #settings.open{display:flex}
+  #settings .panel{background:linear-gradient(180deg,#2a0650,#150330);border:2px solid #ff2d95;border-radius:20px;padding:20px;width:100%;max-width:360px;
+    box-shadow:0 0 40px rgba(255,45,149,.5)}
+  #settings h2{font-size:20px;margin-bottom:6px;color:var(--gold)}
+  #settings p{font-size:13px;opacity:.8;margin-bottom:14px}
+  #settings .row{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:18px;font-weight:900}
+  #settings .row .lbl{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--c)}
+  #settings .row input{width:72px;font-size:18px;font-weight:900;text-align:center;padding:6px;border-radius:10px;border:2px solid #555;background:#0b0217;color:#fff;font-family:inherit}
+  #settings .row .pct{font-size:14px;opacity:.75;font-weight:400}
+  #settings .acts{display:flex;gap:10px;margin-top:18px}
+  #settings .acts button{flex:1;padding:10px;border-radius:12px;border:none;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit}
+  #s-save{background:linear-gradient(180deg,#ff5fae,#e0106a);color:#fff}
+  #s-reset{background:rgba(255,255,255,.15);color:#fff}
   #mute{position:fixed;top:12px;right:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;
     padding:6px 12px;font-size:16px;cursor:pointer;z-index:12}
 </style>
 </head>
 <body>
+<button id="gear" aria-label="確率の設定">⚙ 設定</button>
 <button id="mute" aria-label="音のオン/オフ">🔊</button>
+<div id="settings">
+  <div class="panel">
+    <h2>確率の設定</h2>
+    <p>「1/N で当たり」の N を 1〜20 で指定します（1 = 必ず当たり）。</p>
+    <div class="row" style="--c:#e0106a"><span class="lbl">大</span>1 / <input type="number" id="s-dai" min="1" max="20" inputmode="numeric"><span class="pct" id="p-dai"></span></div>
+    <div class="row" style="--c:#d17a00"><span class="lbl">中</span>1 / <input type="number" id="s-chu" min="1" max="20" inputmode="numeric"><span class="pct" id="p-chu"></span></div>
+    <div class="row" style="--c:#0a8fb5"><span class="lbl">小</span>1 / <input type="number" id="s-sho" min="1" max="20" inputmode="numeric"><span class="pct" id="p-sho"></span></div>
+    <div class="acts"><button id="s-reset">初期値に戻す</button><button id="s-save">保存</button></div>
+  </div>
+</div>
 <div id="stage">
   <h1>おかわりルーレット</h1>
   <div id="wheelWrap">
@@ -95,12 +122,25 @@
 
 <script>
 (() => {
-  // ---- モード設定: セグメント数と当たりの位置（確率 = 当たり数 / セグメント数）
+  // ---- モード設定: odds = N（1/N で当たり）。ホイールは N マスを k 回繰り返し、各ブロックの先頭が当たり
+  const DEFAULT_ODDS = { dai: 2, chu: 4, sho: 5 };
   const MODES = {
-    dai: { label: '大', segs: 8,  wins: [0,2,4,6], winText: '当たり!!',     sub: '1/2 をモノにした!' },
-    chu: { label: '中', segs: 8,  wins: [0,4],     winText: '大当たり!!',   sub: '1/4 を撃ち抜いた!!' },
-    sho: { label: '小', segs: 10, wins: [0,5],     winText: '超大当たり!!!', sub: '1/5 の奇跡!!!' },
+    dai: { label: '大', winText: '当たり!!',     phrase: 'をモノにした!' },
+    chu: { label: '中', winText: '大当たり!!',   phrase: 'を撃ち抜いた!!' },
+    sho: { label: '小', winText: '超大当たり!!!', phrase: 'の奇跡!!!' },
   };
+  const clampOdds = v => Math.min(20, Math.max(1, Math.round(Number(v)) || 1));
+  function applyOdds(odds) {
+    for (const [key, m] of Object.entries(MODES)) {
+      const N = clampOdds(odds[key]), k = Math.max(1, Math.round(8 / N));
+      m.odds = N; m.segs = N * k; m.wins = [...Array(k).keys()].map(i => i * N);
+      m.sub = N === 1 ? '確定演出!' : `1/${N} ${m.phrase}`;
+      document.querySelector(`#b-${key} .odds`).textContent = N === 1 ? '必ず当たり' : `1/${N}で当たり`;
+    }
+  }
+  let savedOdds = { ...DEFAULT_ODDS };
+  try { Object.assign(savedOdds, JSON.parse(localStorage.getItem('okawari-odds') || '{}')); } catch {}
+  applyOdds(savedOdds);
   const LOSE_WORDS = ['ハズレ…', 'ざんねん…', 'おしい!', 'また今度…'];
 
   const $ = id => document.getElementById(id);
@@ -161,7 +201,7 @@
       // ラベル
       ctx.save(); ctx.rotate(a0 + seg / 2);
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.font = `900 ${n > 8 ? 46 : 54}px "Hiragino Sans","Yu Gothic UI",sans-serif`;
+      ctx.font = `900 ${n > 14 ? 30 : n > 10 ? 38 : n > 8 ? 46 : 54}px "Hiragino Sans","Yu Gothic UI",sans-serif`;
       if (win) { ctx.fillStyle = '#7a1040'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.fillText('当たり', R - 40, 0); }
       else { ctx.fillStyle = '#b9a8ff'; ctx.fillText('ハズレ', R - 40, 0); }
       ctx.restore();
@@ -362,6 +402,21 @@
   });
   banner.addEventListener('click', hideBanner);
   document.addEventListener('pointerdown', e => { if (!spinning && !e.target.closest('.btn,#mute')) hideBanner(); });
+  // ---- 設定画面
+  const keys = Object.keys(MODES);
+  const showPct = () => keys.forEach(k => { $('p-' + k).textContent = `(${Math.round(100 / clampOdds($('s-' + k).value) * 10) / 10}%)`; });
+  const fillForm = odds => { keys.forEach(k => $('s-' + k).value = clampOdds(odds[k])); showPct(); };
+  $('gear').addEventListener('click', () => { if (spinning) return; fillForm(Object.fromEntries(keys.map(k => [k, MODES[k].odds]))); $('settings').classList.add('open'); });
+  keys.forEach(k => $('s-' + k).addEventListener('input', showPct));
+  $('s-reset').addEventListener('click', () => fillForm(DEFAULT_ODDS));
+  $('s-save').addEventListener('click', () => {
+    const odds = Object.fromEntries(keys.map(k => [k, clampOdds($('s-' + k).value)]));
+    applyOdds(odds); drawWheel();
+    try { localStorage.setItem('okawari-odds', JSON.stringify(odds)); } catch {}
+    $('settings').classList.remove('open');
+  });
+  $('settings').addEventListener('click', e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); });
+
   $('mute').addEventListener('click', () => {
     muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊';
     try { localStorage.setItem('okawari-muted', muted ? '1' : '0'); } catch {}
