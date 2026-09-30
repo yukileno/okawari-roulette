@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>ドーパミン・ルーレット</title>
+<title>おかわりルーレット</title>
 <style>
   :root{--gold:#ffd84d;--pink:#ff2d95;--cyan:#22e6ff;--bg:#0b0217}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -75,7 +75,7 @@
 <body>
 <button id="mute" aria-label="音のオン/オフ">🔊</button>
 <div id="stage">
-  <h1>ドーパミン・ルーレット</h1>
+  <h1>おかわりルーレット</h1>
   <div id="wheelWrap">
     <div class="bulbs" id="bulbs"></div>
     <svg id="pointer" viewBox="0 0 44 56"><path d="M22 54 L4 10 A18 18 0 1 1 40 10 Z" fill="#ffd84d" stroke="#fff" stroke-width="3"/><circle cx="22" cy="14" r="6" fill="#ff2d95"/></svg>
@@ -112,8 +112,8 @@
 
   let mode = 'dai', rot = 0, spinning = false, muted = false;
   let stats = { spins: 0, wins: 0, streak: 0, best: 0 };
-  try { Object.assign(stats, JSON.parse(localStorage.getItem('dopa-stats') || '{}')); } catch {}
-  try { muted = localStorage.getItem('dopa-muted') === '1'; } catch {}
+  try { Object.assign(stats, JSON.parse(localStorage.getItem('okawari-stats') || '{}')); } catch {}
+  try { muted = localStorage.getItem('okawari-muted') === '1'; } catch {}
   $('mute').textContent = muted ? '🔇' : '🔊';
 
   // ---- 乱数（crypto があれば使う）
@@ -258,7 +258,7 @@
     $('stats').innerHTML = `回転 <b>${stats.spins}</b> ／ 当たり <b>${stats.wins}</b> (${rate}%)` +
       (stats.streak > 1 ? ` ／ <span id="streak">🔥${stats.streak}連チャン中!</span>` : '') +
       (stats.best > 1 ? ` ／ 最高 <b>${stats.best}</b>連` : '');
-    try { localStorage.setItem('dopa-stats', JSON.stringify(stats)); } catch {}
+    try { localStorage.setItem('okawari-stats', JSON.stringify(stats)); } catch {}
   }
   function showBanner(win, text, sub) {
     banner.className = ''; void banner.offsetWidth;
@@ -364,7 +364,7 @@
   document.addEventListener('pointerdown', e => { if (!spinning && !e.target.closest('.btn,#mute')) hideBanner(); });
   $('mute').addEventListener('click', () => {
     muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊';
-    try { localStorage.setItem('dopa-muted', muted ? '1' : '0'); } catch {}
+    try { localStorage.setItem('okawari-muted', muted ? '1' : '0'); } catch {}
   });
 
   drawWheel(); renderStats();
